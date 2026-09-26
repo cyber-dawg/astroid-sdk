@@ -230,6 +230,28 @@ export class SessionManager {
 
     return this.activeRefreshPromise;
   }
+
+  /** True while a refresh started by {@link refreshSession} is in flight. */
+  isRefreshing(): boolean {
+    return this.activeRefreshPromise !== null;
+  }
+
+  /**
+   * Resolve once any in-flight refresh settles; resolves immediately when
+   * idle. A failed refresh is swallowed here — waiting callers surface the
+   * resulting authentication error through the normal 401 path instead of
+   * duplicating it for every queued request.
+   */
+  async waitForRefresh(): Promise<void> {
+    const pending = this.activeRefreshPromise;
+    if (!pending) return;
+    try {
+      await pending;
+    } catch {
+      // The failed refresh already cleared tokens; the caller's own request
+      // will produce the authoritative authentication error.
+    }
+  }
 }
 
 /**
